@@ -30,10 +30,10 @@
 
 
 // Wifi network station credentials
-#define WIFI_SSID "Nj"
-#define WIFI_PASSWORD "12345678"
+#define WIFI_SSID "******************"
+#define WIFI_PASSWORD "***********+"
 // Telegram BOT Token (Get from Botfather)
-#define BOT_TOKEN "7008198807:AAHpGyCHGVJuHuJceuxziBevLTFA3-Jv6HM"
+#define BOT_TOKEN "*************************"
 
 
 #include <DHT.h> // Biblioteca para el sensor DHT
