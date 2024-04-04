@@ -30,25 +30,29 @@
 
 
 // Wifi network station credentials
-#define WIFI_SSID "******************"
-#define WIFI_PASSWORD "***********+"
+#define WIFI_SSID "*****"
+#define WIFI_PASSWORD "*****"
 // Telegram BOT Token (Get from Botfather)
-#define BOT_TOKEN "*************************"
+#define BOT_TOKEN "7008198807:AAHpGyCHGVJuHuJceuxziBevLTFA3-Jv6HM"
 
 
-#include <DHT.h> // Biblioteca para el sensor DHT
-
+#include <DHT.h>  // Biblioteca para el sensor DHT
 
 // Definiciones de los pines para los sensores
-#define DHT_PIN 14 // Pin al que está conectado el sensor DHT
-#define DHT_TYPE DHT11 // Tipo de sensor DHT (DHT11, DHT21, DHT22)
-const int LDR_PIN =27; // Pin del sensor LDR
+#define DHT_PIN 14       // Pin al que está conectado el sensor DHT
+#define DHT_TYPE DHT11   // Tipo de sensor DHT (DHT11, DHT21, DHT22)
+const int LDR_PIN = 34;  // Pin del sensor LDR
 
 const int LED_RED = 2;
 const int LED_GREEN = 4;
 
+const int TEMPSUELO = 35;
 
-DHT dht(DHT_PIN, DHT_TYPE); // Inicialización del sensor DHT
+const int FAN_PIN = 27;  // Pin del ventilador
+
+DHT dht(DHT_PIN, DHT_TYPE);  // Inicialización del sensor DHT
+
+
 
 
 const unsigned long BOT_MTBS = 1000;  // mean time between scan messages
@@ -57,8 +61,6 @@ UniversalTelegramBot bot(BOT_TOKEN, secured_client);
 unsigned long bot_lasttime;  // last time messages' scan has been done
 //const int ledPin = 27;
 int ledStatus = 0;
-
-
 
 
 void handleNewMessages(int numNewMessages) {
@@ -70,17 +72,6 @@ void handleNewMessages(int numNewMessages) {
     String from_name = bot.messages[i].from_name;
     if (from_name == "")
       from_name = "Guest";
-
-      if (text == "/start") {
-      String welcome = "Welcome to Universal Arduino Telegram Bot library, " + from_name + ".\n";
-      welcome += "This is Flash Led Bot example.\n\n";
-      welcome += "/ledon : to switch the Led ON\n";
-      welcome += "/ledoff : to switch the Led OFF\n";
-      welcome += "/status : Returns current status of LED\n";
-      welcome += "/sensores : Returns current status of sonsor\n";
-      bot.sendMessage(chat_id, welcome, "Markdown");
-    }
-
     if (text == "/ledon") {
       digitalWrite(LED_GREEN, HIGH);  // turn the LED on (HIGH is the voltage level)
       ledStatus = 1;
@@ -98,40 +89,87 @@ void handleNewMessages(int numNewMessages) {
         bot.sendMessage(chat_id, "Led is OFF", "");
       }
     }
-    
+    if (text == "/start") {
+      String welcome = "Welcome to Universal Arduino Telegram Bot library, " + from_name + ".\n";
+      welcome += "This is Flash Led Bot example.\n\n";
+      welcome += "/ledon : to switch the Led ON\n";
+      welcome += "/ledoff : to switch the Led OFF\n";
+      welcome += "/status : Returns current status of LED\n";
+      welcome += "/sensores : Returns current status of sensor\n";
+      welcome += "/led0 : activa el ventilador\n";
+      welcome += "/led1 : activa el ventilador cuando al temepratura supera los 15°C\n";
+      bot.sendMessage(chat_id, welcome, "Markdown");
+    }
+
+    if (text == "/led0") {
+      String Venti = "Enceder led por 3 segundos";
+      digitalWrite(FAN_PIN, HIGH);  // Activar el ventilador
+      delay(3000);
+      digitalWrite(FAN_PIN, LOW);  // Desactivar el ventilador
+    }
+
+    if (text == "/led1") {
+      String Venti = "Enceder led si la temperatura es >15°C\n";
+      float temperature = dht.readTemperature();
+      if (!isnan(temperature) && temperature > 27) {  // Verificar si la temperatura es mayor a 32 grados
+        digitalWrite(FAN_PIN, HIGH);                  // Activar el ventilador
+      } else {
+        digitalWrite(FAN_PIN, LOW);  // Desactivar el ventilador
+      }
+    }
 
     if (text == "/sensores") {
-        String sensorData = "Datos de los sensores:\n";
-        // Lectura de temperatura y humedad
-        float temperature = dht.readTemperature();
-        float humidity = dht.readHumidity();
-        if (!isnan(temperature) && !isnan(humidity)) {
-            digitalWrite(LED_GREEN, HIGH);
-            sensorData += "Temperatura: " + String(temperature) + "°C\n";
-            sensorData += "Humedad: " + String(humidity) + "%\n";
-            delay(1000);
-            digitalWrite(LED_GREEN, LOW);
+      String sensorData = "Datos de los sensores:\n";
+      // Lectura de temperatura y humedad
+      float temperature = dht.readTemperature();
+      float humidity = dht.readHumidity();
+      if (!isnan(temperature) && !isnan(humidity)) {
+        digitalWrite(LED_GREEN, HIGH);
+        sensorData += "Temperatura ambiente: " + String(temperature) + "°C\n";
+        sensorData += "Humedad: " + String(humidity) + "%\n";
+        delay(1000);
+        digitalWrite(LED_GREEN, LOW);
+        if (!isnan(temperature) && temperature > 27) {  // Verificar si la temperatura es mayor a 32 grados
+          digitalWrite(FAN_PIN, HIGH);                  // Activar el ventilador
         } else {
-            sensorData += "Error al leer la temperatura y humedad\n";
-            digitalWrite(LED_RED, HIGH);
-            delay(1000);
-            digitalWrite(LED_RED, LOW);
+          digitalWrite(FAN_PIN, LOW);  // Desactivar el ventilador
         }
-        // Lectura de luz
-        float lightLevel = analogRead(LDR_PIN);
-        Serial.println(lightLevel);
-        if (!isnan(lightLevel)) {
-            sensorData += "Nivel de luz: " + String(lightLevel) + " lx\n";
-            digitalWrite(LED_GREEN, HIGH);
-            delay(1000);
-            digitalWrite(LED_GREEN, LOW);
-        } else {
-            sensorData += "Error al leer el nivel de luz\n";
-            digitalWrite(LED_RED, HIGH);
-            delay(1000);
-            digitalWrite(LED_RED, LOW);
-        }
-        bot.sendMessage(chat_id, sensorData, "");
+      } else {
+        sensorData += "Error al leer la temperatura y humedad\n";
+        digitalWrite(LED_RED, HIGH);
+        delay(1000);
+        digitalWrite(LED_RED, LOW);
+      }
+      // Lectura de luz
+      float lightLevel = int(map(int(analogRead(LDR_PIN)), 0, 4095, 0, 100));
+      Serial.println(lightLevel);
+      if (!isnan(lightLevel)) {
+        sensorData += "Nivel de luz: " + String(lightLevel) + " lx\n";
+        digitalWrite(LED_GREEN, HIGH);
+        delay(1000);
+        digitalWrite(LED_GREEN, LOW);
+      } else {
+        sensorData += "Error al leer el nivel de luz\n";
+        digitalWrite(LED_RED, HIGH);
+        delay(1000);
+        digitalWrite(LED_RED, LOW);
+      }
+
+      float temperature1 = int(map(int(analogRead(TEMPSUELO)), 0, 4095, 0, 100));
+      if (!isnan(temperature1)) {
+        sensorData += "Temperatura de la planta: " + String(temperature1) + "°C\n";
+        digitalWrite(LED_GREEN, HIGH);
+        delay(1000);
+        digitalWrite(LED_GREEN, LOW);
+      } else {
+        sensorData += "Error al leer la temperatura\n";
+        digitalWrite(LED_RED, HIGH);
+        delay(1000);
+        digitalWrite(LED_RED, LOW);
+      }
+
+
+      bot.sendMessage(chat_id, sensorData, "");
     }
   }
 }
@@ -141,13 +179,20 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
   dht.begin();
+  //sensors.begin();
   //pinMode(ledPin, OUTPUT);  // initialize digital ledPin as an output.
 
   //verificar sensores
-//
-
+  //
+  pinMode(FAN_PIN, OUTPUT);  // Configurar el pin del ventilador como salida
   pinMode(LED_GREEN, OUTPUT);
   pinMode(LED_RED, OUTPUT);
+
+  //digitalWrite(FAN_PIN, HIGH);  // Activar el ventilador
+  //delay(3000);
+  //digitalWrite(FAN_PIN, LOW);  // Desactivar el ventilador
+
+  //Serial.println("Ventilador activo");
 
   delay(10);
   //digitalWrite(ledPin, HIGH);  // initialize pin as off (active LOW)
@@ -183,7 +228,4 @@ void loop() {
     bot_lasttime = millis();
   }
 }
-
-
-
-// end of code.
+//end of code
